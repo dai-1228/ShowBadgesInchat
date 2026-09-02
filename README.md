@@ -47,16 +47,18 @@ Each folder under `plugins/` is one plugin. A plugin is **native** when it has a
 
 ## Build, package, publish
 
-From the repository root. Commands are shown with Bun so they work regardless of the installed Node version; on Node ≥ 22.18 the npm-script forms work identically.
+From the repository root. Commands are shown with Bun so they work regardless of the installed Node version; on Node ≥ 22.18 the npm-script forms work identically. The `--bun` flag matters: plain `bun run build` executes the CLI's bin shim with system Node and crashes when that Node is older than 22.18, while `--bun` forces Bun's runtime.
+
+`scripts/release.sh` performs all four steps below in one command.
 
 ```sh
 bun i   # install dependencies
 
 # 1. Bundle the JS -> plugins/revenge.showbadgesinchat/build/js/index.js
-bun run build
+bun --bun run build
 #   append the plugin name to build only that one:
-#     bun run build revenge.showbadgesinchat
-#   or invoke the CLI directly:
+#     bun --bun run build revenge.showbadgesinchat
+#   or invoke the CLI directly (same effect):
 #     ~/.bun/bin/bun node_modules/@revenge-mod/plugin-cli/bin/revenge-plugin.js build
 
 # 2. Stage and zip the artifact -> build/dist/revenge.showbadgesinchat.zip
@@ -65,7 +67,10 @@ cp plugins/revenge.showbadgesinchat/manifest.json build/revenge.showbadgesinchat
 cp plugins/revenge.showbadgesinchat/build/js/index.js build/revenge.showbadgesinchat/index.js
 (cd build/revenge.showbadgesinchat && zip -X ../dist/revenge.showbadgesinchat.zip manifest.json index.js)
 
-# 3. Regenerate the repository index -> ./index.json
+# 3. Publish the artifact where index.json advertises it -> ./revenge.showbadgesinchat.zip
+cp build/dist/revenge.showbadgesinchat.zip ./revenge.showbadgesinchat.zip
+
+# 4. Regenerate the repository index -> ./index.json
 ~/.bun/bin/bun node_modules/@revenge-mod/plugin-cli/bin/revenge-plugin.js generate-index \
     --dist build/dist --base-url https://dai-1228.github.io/ShowBadgesInchat
 ```
@@ -74,6 +79,7 @@ Notes:
 
 - `generate-index` needs `--dist` together with `--base-url` (artifact URLs in the index must be absolute) and writes `index.json` into the current directory by default; `--out <file>` overrides. It writes one commit per ZIP's `manifest.json`: the absolute URL, SHA-256 digest, size and dependency map under that manifest's `version`.
 - This repository points `--base-url` at the GitHub Pages URL of `origin`: `https://dai-1228.github.io/ShowBadgesInchat`. Adjust it if you publish the contents of `build/dist` (plus the generated `index.json`) somewhere else.
+- **The artifact ZIP must be committed at the repository root.** `build/` is gitignored, and `index.json` advertises the ZIP at the Pages site root (`https://dai-1228.github.io/ShowBadgesInchat/revenge.showbadgesinchat.zip`) — a ZIP that stays inside `build/dist` is never published, and the client fails with a fetch error when installing. Step 3 puts the ZIP where the index points; commit the root ZIP together with `index.json` so their digest and size always agree. The bundle is not byte-deterministic across rebuilds, so always regenerate the index in the same run as the ZIP (`scripts/release.sh` does).
 - Bump `version` in the plugin manifest before republishing a build — the generator fails on a duplicate version — and re-run `generate-index` after every rebuild so digests and sizes stay correct.
 - `bun run build:dev` produces a development bundle.
 - The template's Gradle packaging (`./gradlew packageAllPlugins`) compiles and packages native plugins and requires JDK 25+, the Android SDK and the Revenge API in your local Maven repository (`./gradlew :api:publishToMavenLocal` in the `revenge-xposed` repo). This repository is JS-only, so the manual stage-and-zip steps above are what produce its artifact.
@@ -83,8 +89,8 @@ Notes:
 Test the full repository flow — add the repository, browse, install, update — against local builds. Build the ZIP first, then start the dev server. The server regenerates the index in memory from the dist folder and serves it beside the artifacts; it does not read the committed `index.json`.
 
 ```sh
-bun run serve                                    # LAN mode: http://<your-lan-ip>:8080
-bun run serve -- --base-url http://127.0.0.1:8080
+bun --bun run serve                              # LAN mode: http://<your-lan-ip>:8080
+bun --bun run serve -- --base-url http://127.0.0.1:8080
 adb reverse tcp:8080 tcp:8080                    # if the device cannot reach your IP, or blocks cleartext
 ```
 

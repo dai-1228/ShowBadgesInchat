@@ -13,7 +13,7 @@
       "versions": {
         "1.0.0": {
           "url": "https://dai-1228.github.io/ShowBadgesInchat/revenge.showbadgesinchat.zip",
-          "sha256": "4c0101f54d15b11111d773ffa9b2a0752665b66e57fbed6708775dfb010cdbcb",
+          "sha256": "ad3ecf27614e874b9e70bb73ee0cf51895349cbecbde6eef6ef5e29a217fcf70",
           "size": 8638,
           "dependencies": {
             "revenge.api": {

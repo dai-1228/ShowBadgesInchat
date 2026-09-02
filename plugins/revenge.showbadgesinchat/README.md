@@ -67,7 +67,7 @@ Regenerate the repository index when publishing. The command scans `--dist`, req
 bun node_modules/@revenge-mod/plugin-cli/bin/revenge-plugin.js generate-index --dist build/dist --base-url https://dai-1228.github.io/ShowBadgesInchat
 ```
 
-To test the full install/update flow on a device, serve the repository locally with `bun run serve` (see the root README).
+To test the full install/update flow on a device, serve the repository locally with `bun --bun run serve` (see the root README).
 
 ## License
 
