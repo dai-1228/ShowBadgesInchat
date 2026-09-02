@@ -60,9 +60,8 @@ export function containsBadgeRow(root: unknown): boolean {
 			props.testID.startsWith(BADGE_ROW_MARKER)
 		)
 			return true
-		return (
-			typeof props.key === 'string' && props.key.startsWith(BADGE_ROW_MARKER)
-		)
+		// React keeps `key` on the element itself, never inside `props`.
+		return typeof node.key === 'string' && node.key.startsWith(BADGE_ROW_MARKER)
 	})
 }
 
@@ -122,9 +121,11 @@ export function injectBadgeRow(root: unknown, user: SbicUser): boolean {
 		const node = host.node
 		let children = node.props.children
 
-		if (!Array.isArray(children)) children = [children]
+		// Copy before mutating: the original array may be shared/frozen by React.
+		if (Array.isArray(children)) children = children.slice()
+		else children = [children]
 
-		const badgeEl = <ChatBadges user={user} />
+		const badgeEl = <ChatBadges key={BADGE_ROW_MARKER} user={user} />
 
 		// Place badges between the display-name text and any trailing tag pill
 		// (elements exposing a `.Types` static are Discord's bot/system tags).

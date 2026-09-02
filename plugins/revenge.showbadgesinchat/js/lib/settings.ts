@@ -44,10 +44,10 @@ let version = 0
 const subscribers = new Set<() => void>()
 
 function sanitize(raw: Partial<SbicSettings> | undefined | null): SbicSettings {
-	const merged: SbicSettings = {
-		...JSON.parse(JSON.stringify(DEFAULT_SETTINGS)),
-		...(raw ?? {}),
-	} as SbicSettings
+	// Deep-copy the merge so we never mutate objects owned by the storage cache.
+	const merged: SbicSettings = JSON.parse(
+		JSON.stringify({ ...DEFAULT_SETTINGS, ...(raw ?? {}) }),
+	) as SbicSettings
 
 	if (!merged.enabled || typeof merged.enabled !== 'object')
 		merged.enabled = { ...DEFAULT_SETTINGS.enabled }
@@ -110,8 +110,14 @@ export async function updateSettings(
 ): Promise<void> {
 	readFromCache()
 	current = sanitize({ ...current, ...patch })
-	await storage.set(current)
+	// Emit immediately so every subscriber sees the new state even if the
+	// persistence below fails (storage.subscribe emits again on success).
 	emit()
+	try {
+		await storage.set(current)
+	} catch (e) {
+		console.log('[ShowBadgesInChat] failed to persist settings:', e)
+	}
 }
 
 export const settingsStore = {

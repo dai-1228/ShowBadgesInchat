@@ -20,6 +20,7 @@ const TARGET_NAMES = ['DisplayName', 'HeaderName'] as const
 const patchedTargets = new Set<unknown>()
 const unpatches: Array<() => void> = []
 let loggedSkipOnce = false
+let disposed = true
 
 interface NamedLike {
 	name?: string
@@ -103,10 +104,9 @@ function patchCandidate(name: (typeof TARGET_NAMES)[number]) {
 	try {
 		// `returnNamespace: true` guarantees we always receive the whole module
 		// (so we can patch the specific export key inside it).
-		const [mod] =
-			(lookupModule as any)(withName(name), {
-				returnNamespace: true,
-			}) || []
+		const [mod] = lookupModule(withName<ModuleRecord>(name), {
+			returnNamespace: true,
+		})
 		if (mod) {
 			const key = resolveExport(mod, name)
 			if (key !== null) {
@@ -120,20 +120,21 @@ function patchCandidate(name: (typeof TARGET_NAMES)[number]) {
 
 	if (!found) {
 		try {
-			const unsub = (getModules as any)(
-				withName(name),
-				(mod: ModuleRecord) => {
+			const unsub = getModules(
+				withName<ModuleRecord>(name),
+				mod => {
+					if (disposed) return
 					const key = resolveExport(mod, name)
 					if (key !== null) {
-						if (!found) {
-							applyInstead(name, mod, key)
-							found = true
-							unsub()
-						}
+						// Stop waiting as soon as we've patched one match.
+						unsub()
+						applyInstead(name, mod, key)
 					}
 				},
 				{ returnNamespace: true, max: 1, initialize: true },
 			)
+			// Cancel the pending wait on stop (no-op once it already fired).
+			unpatches.push(unsub)
 		} catch (e) {
 			console.log(`[ShowBadgesInChat] getModules failed for ${name}:`, e)
 		}
@@ -142,9 +143,11 @@ function patchCandidate(name: (typeof TARGET_NAMES)[number]) {
 
 export function installPatches(): () => void {
 	loggedSkipOnce = false
+	disposed = false
 	for (const name of TARGET_NAMES) patchCandidate(name)
 
 	return () => {
+		disposed = true
 		while (unpatches.length > 0) {
 			try {
 				unpatches.pop()?.()

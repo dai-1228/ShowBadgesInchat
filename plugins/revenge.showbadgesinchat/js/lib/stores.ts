@@ -11,13 +11,21 @@ export interface CurrentUserRecord {
 }
 
 let userStore: Record<string, any> | undefined
+let cancelStoreWait: (() => void) | undefined
 
 /** Registers the store waiter — safe to call during `start`. */
 export function initStores(): void {
-	if (userStore) return
-	getStore<Record<string, any>>('UserStore', store => {
+	if (cancelStoreWait) return
+	cancelStoreWait = getStore<Record<string, any>>('UserStore', store => {
 		userStore = store
 	})
+}
+
+/** Cancels the store waiter and drops cached state — call during `stop`. */
+export function stopStores(): void {
+	cancelStoreWait?.()
+	cancelStoreWait = undefined
+	userStore = undefined
 }
 
 export function getCurrentUser(): CurrentUserRecord | null {

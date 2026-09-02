@@ -1,5 +1,5 @@
 {
-	"name": "My Plugin Repository",
-	"description": "Example plugin repository from the Revenge plugin template.",
+	"name": "ShowBadgesInChat Plugin Repository",
+	"description": "Distributes the ShowBadgesInChat plugin for Revenge, which shows the message author's Discord, Nitro, Vencord, and Equicord badges next to their name in chat.",
 	"channels": {}
 }

@@ -1,74 +1,100 @@
-# Revenge Plugin Template
+# ShowBadgesInChat for Revenge
 
-This repository is a starter monorepo for external Revenge plugins. Each plugin becomes one ZIP
-file. One repository can hold any number of plugins under `plugins/`.
+This repository builds and distributes **ShowBadgesInChat**, a plugin for [Revenge](https://github.com/revenge-mod) (the Discord client mod). It shows the message author's badges next to their name in chat, and is a port of the Equicord/Vencord [`showBadgesInChat`](https://github.com/Equicord/Equicord/tree/main/src/equicordplugins/showBadgesInChat) plugin targeting Android and iOS.
 
-A plugin has up to three parts. Its own `manifest.json` declares all of them:
+The plugin renders a row of badges beside the author's name:
 
-- **`dist.android`** is native Kotlin code. The build compiles it to a DEXed JAR, and the plugin loader loads it with `DexClassLoader`.
-  This code runs early, before the JS bundle.
-- **`dist.script`** is the JavaScript bundle. The Revenge JS side runs it.
+- **Discord profile badges** — Staff, Partner, HypeSquad, Bug Hunter, Early Supporter, Early Verified Bot Developer, etc. (from the user's `flags` / `publicFlags`)
+- **Discord Nitro** badge (Classic / Basic / full Nitro)
+- **Vencord Donor** badges, fetched from `https://badges.vencord.dev/badges.json`
+- **Equicord Donor** badges, fetched from `https://badge.equicord.org/badges.json`
+- **Vencord Contributor** and **Equicord Contributor** badges (hardcoded contributor ID lists)
 
-## Layout
+Every badge group can be toggled and reordered in the plugin's settings page. See the [plugin README](plugins/revenge.showbadgesinchat/README.md) for the file-by-file layout of the plugin.
 
-Each folder under `plugins/` is one plugin. A plugin is **native** when it has a `src/main` folder.
-A plugin is **JS-only** when it has only a JS entry file. A plugin can have both.
+The repository is the Revenge plugin template with that one plugin in it. It is **JS-only**: there is no native Kotlin part.
+
+## Repository layout
 
 ```
 ├── plugins/
-│   ├── example-plugin/            # Native + JS
-│   │   ├── manifest.json          # id, metadata, dist.* paths
-│   │   ├── src/main/kotlin/com/example/plugin/MyPlugin.kt   # -> plugin.jar
-│   │   └── js/index.ts            # -> index.js
-│   ├── example-js-plugin/         # JS-only: no src/main, no dist.android
-│   │   ├── manifest.json
-│   │   └── js/index.ts
-│   ├── example-library/           # Dependency example: the plugin others depend on
-│   └── example-dependent/         # Dependency example: depends on com.example.library
+│   └── revenge.showbadgesinchat/       # the plugin: manifest.json + js/ sources
+├── build/
+│   ├── revenge.showbadgesinchat/       # staging: manifest.json + index.js
+│   └── dist/
+│       └── revenge.showbadgesinchat.zip   # the distributable artifact
+├── index.json                          # repository index (generated, committed)
+└── repo.config.json                    # repository display metadata + channel overrides
 ```
 
-The bundler looks for the JS entry in this order: `js/index.*`, then `src/index.*`, then `index.*` in the plugin folder.
-Each step accepts `.ts`, `.tsx`, `.js` and `.jsx`.
+- `plugins/revenge.showbadgesinchat/manifest.json` is a format 1 manifest with id `revenge.showbadgesinchat` and `dist.script: "index.js"`. It declares only the JS part.
+- One ZIP per plugin: `build/dist/<id>.zip` holds `manifest.json` and the bundled `index.js`.
+- `index.json` sits at the repository root — the plugin CLI's default output location — and describes the published plugins: channels, versions, absolute artifact URLs and SHA-256 digests.
+- `repo.config.json` feeds `generate-index` the repository name/description and optional channel overrides.
 
-To add a plugin, create `plugins/<name>/manifest.json` and add a `src/main` folder for native code, a JS entry file, or both.
+Each folder under `plugins/` is one plugin. A plugin is **native** when it has a `src/main` folder (Kotlin). A plugin is **JS-only** when it has only a JS entry file; a plugin can have both. The bundler looks for the JS entry in this order: `js/index.*`, then `src/index.*`, then `index.*` in the plugin folder. Each step accepts `.ts`, `.tsx`, `.js` and `.jsx`.
 
 ## Prerequisites
 
-- **JDK 25 or later** and the **Android SDK**, with `build-tools` and `platform 36`.
-  Don't forget to set `sdk.dir` in `local.properties`, or set the `ANDROID_HOME` environment variable.
-- **A JS runtime** for the JS build: [Node](https://nodejs.org/) 22.18 or later,
-  [Deno](https://deno.com/) 2, or [Bun](https://bun.com/).
-- **The Revenge plugin API in your local Maven repository.** Run this in the `revenge-xposed` repository:
+- **A JS runtime for the build:** [Node](https://nodejs.org/) **22.18 or later** (the CLI's `engines` requirement), [Deno](https://deno.com/) 2, or [Bun](https://bun.com/).
+  On an older Node the plugin CLI crashes with a `styleText` error. Run it through Bun instead — via the package scripts (`bun run build`, which Bun executes with its own runtime) or by invoking the CLI directly:
 
   ```sh
-  ./gradlew :api:publishToMavenLocal
+  ~/.bun/bin/bun node_modules/@revenge-mod/plugin-cli/bin/revenge-plugin.js <command>
   ```
 
-  The task publishes `io.github.revenge:api`. `gradle/libs.versions.toml` pins the version.
+- **JDK, the Android SDK and the Revenge API Maven artifact are not needed here.** They only matter for native plugins (a `src/main` folder), and ShowBadgesInChat has none.
 
-## Build
+## Build, package, publish
 
-Build and package every plugin:
-
-```sh
-./gradlew packageAllPlugins
-```
-
-The task writes one `build/dist/<id>.zip` per plugin. Each ZIP holds `manifest.json`, the dexed JAR
-of a native plugin, and the JS bundle of a plugin that has one.
-
-Build one plugin, or only one part of it:
+From the repository root. Commands are shown with Bun so they work regardless of the installed Node version; on Node ≥ 22.18 the npm-script forms work identically.
 
 ```sh
-./gradlew packageExamplePlugin              # one plugin -> build/dist/<id>.zip
-./gradlew :plugins:example-plugin:dexJar    # native only -> plugins/example-plugin/build/outputs/plugin/plugin.jar
-# replace bun with npm if you use node
-bun install                                 # install the dependencies
-bun run build                               # every JS bundle -> plugins/<name>/build/js/index.js
-bun run build example-plugin                # the JS bundle of one plugin
+bun i   # install dependencies
+
+# 1. Bundle the JS -> plugins/revenge.showbadgesinchat/build/js/index.js
+bun run build
+#   append the plugin name to build only that one:
+#     bun run build revenge.showbadgesinchat
+#   or invoke the CLI directly:
+#     ~/.bun/bin/bun node_modules/@revenge-mod/plugin-cli/bin/revenge-plugin.js build
+
+# 2. Stage and zip the artifact -> build/dist/revenge.showbadgesinchat.zip
+mkdir -p build/revenge.showbadgesinchat build/dist
+cp plugins/revenge.showbadgesinchat/manifest.json build/revenge.showbadgesinchat/
+cp plugins/revenge.showbadgesinchat/build/js/index.js build/revenge.showbadgesinchat/index.js
+(cd build/revenge.showbadgesinchat && zip -X ../dist/revenge.showbadgesinchat.zip manifest.json index.js)
+
+# 3. Regenerate the repository index -> ./index.json
+~/.bun/bin/bun node_modules/@revenge-mod/plugin-cli/bin/revenge-plugin.js generate-index \
+    --dist build/dist --base-url https://dai-1228.github.io/ShowBadgesInchat
 ```
 
-Gradle derives each package task name from the folder name, example: `plugins/example-plugin/` gives `packageExamplePlugin`.
+Notes:
+
+- `generate-index` needs `--dist` together with `--base-url` (artifact URLs in the index must be absolute) and writes `index.json` into the current directory by default; `--out <file>` overrides. It writes one commit per ZIP's `manifest.json`: the absolute URL, SHA-256 digest, size and dependency map under that manifest's `version`.
+- This repository points `--base-url` at the GitHub Pages URL of `origin`: `https://dai-1228.github.io/ShowBadgesInchat`. Adjust it if you publish the contents of `build/dist` (plus the generated `index.json`) somewhere else.
+- Bump `version` in the plugin manifest before republishing a build — the generator fails on a duplicate version — and re-run `generate-index` after every rebuild so digests and sizes stay correct.
+- `bun run build:dev` produces a development bundle.
+- The template's Gradle packaging (`./gradlew packageAllPlugins`) compiles and packages native plugins and requires JDK 25+, the Android SDK and the Revenge API in your local Maven repository (`./gradlew :api:publishToMavenLocal` in the `revenge-xposed` repo). This repository is JS-only, so the manual stage-and-zip steps above are what produce its artifact.
+
+## Serve a repository on your machine
+
+Test the full repository flow — add the repository, browse, install, update — against local builds. Build the ZIP first, then start the dev server. The server regenerates the index in memory from the dist folder and serves it beside the artifacts; it does not read the committed `index.json`.
+
+```sh
+bun run serve                                    # LAN mode: http://<your-lan-ip>:8080
+bun run serve -- --base-url http://127.0.0.1:8080
+adb reverse tcp:8080 tcp:8080                    # if the device cannot reach your IP, or blocks cleartext
+```
+
+Add the printed URL on the device as a repository. The server rescans `build/dist` (its default `--dist`) on every index request, so updates show up without restarting: bump the manifest version, rebuild, re-zip, and check for updates on the device.
+
+---
+
+# Template reference
+
+The remainder of this README documents the underlying plugin template: the manifest format and the distribution model. It describes the tooling in this repository generally, including parts this single-plugin, JS-only repository does not use.
 
 ## `manifest.json`
 
@@ -85,14 +111,16 @@ Gradle derives each package task name from the folder name, example: `plugins/ex
     "discord": { "version": "*" }
   },
   "dist": {
-    "script": "index.js",           // relative to the plugin folder
-    "android": {
+    "script": "index.js",           // JS bundle, relative to the plugin folder
+    "android": {                    // native part (not used by this repository)
       "path": "plugin.jar",         // relative to the plugin folder
       "class": "com.example.plugin.MyPlugin"  // the class that exposes the `plugin {}` val
     }
   }
 }
 ```
+
+A plugin's `dist.android` is native Kotlin code: the build compiles it to a DEXed JAR and the plugin loader loads it with `DexClassLoader`. This code runs early, before the JS bundle. `dist.script` is the JavaScript bundle, which the Revenge JS side runs.
 
 ### `version`
 
@@ -128,8 +156,7 @@ Plugins don't load when required dependencies fail or don't satisfy the version 
 Dependencies are resolved **by ID** against the repositories that the user enabled.
 When a dependency lives in another repository, the user must add that repository before installing the plugin.
 
-The `example-library` and `example-dependent` pair shows this. The dependent declares `"com.example.library": { "version": ">=1" }`.
-An install therefore also installs the library. The library always loads and starts first.
+For example, a plugin that declares `"com.example.library": { "version": ">=1" }` pulls in the library at install time. The library always loads and starts first.
 
 If the library is missing or out of range, the dependent never loads.
 
@@ -168,6 +195,8 @@ Two dependency IDs are reserved.
 - **`discord`** resolves to the Discord app version, for example `>=355.0`.
 
 ## Native plugins
+
+Not used by this repository — ShowBadgesInChat is JS-only. For reference, this is how the template handles a native part.
 
 A native plugin is a **top-level `val`** that you build with the `plugin {}` DSL. You implement no
 interface, and you subclass nothing. The host reads the class that `dist.android.class` names, and
@@ -209,10 +238,12 @@ contain them.
 
 ## Distribution
 
-This template is also a **plugin repository**. A repository is a static host that serves `index.json`
-describing every published plugin channels, versions, absolute artifact URLs, and SHA-256 digests.
+This repository is also a **plugin repository**. A repository is a static host that serves `index.json`
+describing every published plugin's channels, versions, absolute artifact URLs, and SHA-256 digests.
 
 A user can add the repository URL in Revenge. Browsing, dependency resolution and updates all run on the client.
+
+For this repository that means hosting the contents of `build/dist` together with the generated root `index.json` — for example on GitHub Pages at `https://dai-1228.github.io/ShowBadgesInchat`, which is the base URL baked into the committed `index.json`.
 
 ### Channels
 
@@ -240,9 +271,8 @@ A stable user never sees a beta, because the `latest` pointer never points at on
 {
     "name": "My Plugin Repository",
     "channels": {
-        "com.example.plugin": {
-            "latest": "1.1.4", // keep latest on 1.1.4, for example when 1.2.0 shipped broken
-            "lts": "1.0.9" // or add a channel of your own
+        "revenge.showbadgesinchat": {
+            "latest": "1.0.0" // keep latest on 1.0.0, for example when 1.1.0 shipped broken
         }
     }
 }
@@ -255,23 +285,3 @@ These rules apply:
 - A channel name carries no version semantics. An `lts` version is the same artifact as its plain version.
   You only point at it for longer. To promote `beta` to `latest`, edit the pointer. No rebuilds or republishes.
 - **A dependency never references a channel.** A dependency constrains versions only, so a mixed-channel install can resolve.
-
-### Serve a repository on your machine
-
-You can test the full repository flow against your own builds: add the repository, browse it, install, and update.  
-Build the ZIPs first, then start the dev server. The server regenerates the index and serves it beside the artifacts:
-
-```sh
-./gradlew packageAllPlugins   # or one package task
-bun run serve                 # http://<your-lan-ip>:8080
-```
-
-Add the URL on the device as a repository. If the device cannot reach your IP, or if it blocks cleartext traffic, use loopback through ADB:
-
-```sh
-bun run serve -- --base-url http://127.0.0.1:8080
-adb reverse tcp:8080 tcp:8080
-```
-
-The server rescans the dist folder on every index request.
-Bump a manifest version, rebuild that plugin, and check for updates on the device. The new version will appear.

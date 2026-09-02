@@ -1,0 +1,30 @@
+{
+  "format": 1,
+  "name": "ShowBadgesInChat Plugin Repository",
+  "description": "Distributes the ShowBadgesInChat plugin for Revenge, which shows the message author's Discord, Nitro, Vencord, and Equicord badges next to their name in chat.",
+  "plugins": {
+    "revenge.showbadgesinchat": {
+      "name": "ShowBadgesInChat",
+      "description": "Shows the message author's badges beside their name in chat. Ported from the Equicord/Vencord plugin.",
+      "author": "Inbestigator, KrystalSkull (original), Revenge port",
+      "channels": {
+        "latest": "1.0.0"
+      },
+      "versions": {
+        "1.0.0": {
+          "url": "https://dai-1228.github.io/ShowBadgesInchat/revenge.showbadgesinchat.zip",
+          "sha256": "4c0101f54d15b11111d773ffa9b2a0752665b66e57fbed6708775dfb010cdbcb",
+          "size": 8638,
+          "dependencies": {
+            "revenge.api": {
+              "version": ">=1 <2"
+            },
+            "discord": {
+              "version": "*"
+            }
+          }
+        }
+      }
+    }
+  }
+}

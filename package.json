@@ -8,7 +8,7 @@
 		"generate-index": "revenge-plugin generate-index",
 		"serve": "revenge-plugin serve",
 		"lint": "biome check",
-		"lint:types": "tsc --noEmit && tsc -p cli --noEmit"
+		"lint:types": "tsc --noEmit"
 	},
 	"dependencies": {
 		"@revenge-mod/devtools-client": "^1.4.0",
@@ -18,11 +18,18 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.5.6",
+		"@rollup/plugin-commonjs": "^29.0.3",
+		"@rollup/plugin-node-resolve": "^16.0.3",
+		"@rollup/plugin-url": "^8.0.2",
 		"@shopify/flash-list": "^2.3.2",
+		"@swc/helpers": "^0.5.23",
 		"@types/node": "^26.1.2",
 		"@types/react": "^19.2.17",
 		"react-native": "0.81.6",
-		"typescript": "^7.0.2"
+		"rollup": "^4.63.0",
+		"rollup-plugin-esbuild": "^6.2.1",
+		"typescript": "^7.0.2",
+		"vendetta-types": "^2.4.21"
 	},
 	"overrides": {
 		"@react-native/community-cli-plugin": "npm:dry-uninstall",

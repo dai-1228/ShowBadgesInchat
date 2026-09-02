@@ -10,7 +10,7 @@
 
 import { startDonorRefresh, stopDonorRefresh } from './lib/donors'
 import { installPatches } from './lib/patch'
-import { initStores } from './lib/stores'
+import { initStores, stopStores } from './lib/stores'
 import SettingsPage from './ui/settings'
 
 let unpatchPatches: (() => void) | undefined
@@ -29,6 +29,7 @@ export default plugin({
 		} catch {}
 		unpatchPatches = undefined
 		stopDonorRefresh()
+		stopStores()
 		console.log('[ShowBadgesInChat] stopped')
 	},
 
